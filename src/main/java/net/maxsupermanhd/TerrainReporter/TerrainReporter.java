@@ -36,6 +36,7 @@ public class TerrainReporter implements ModInitializer {
 	public static boolean isActive = false;
 	public static class ChunkSender implements Runnable {
 		public String status = "Allocated";
+		public boolean isFinished = false;
 		private final long allocatedAt;
 		private final int x;
 		private final int z;
@@ -139,8 +140,9 @@ public class TerrainReporter implements ModInitializer {
 			if(httpstatus != 200 && config.report_to_chat) {
 				this.addDebugMessage(mc, "Server answered http {0} - {1}", httpstatus, response.toString());
 			}
-			status = response.toString();
-			waitAndDrop(1000);
+			status = "Done";
+			isFinished = true;
+			waitAndDrop(10000);
 		}
 	}
 
@@ -153,11 +155,18 @@ public class TerrainReporter implements ModInitializer {
 		}
 		TextRenderer r = MinecraftClient.getInstance().textRenderer;
 		List<ChunkSender> valuesCopy = new ArrayList<>(SendingChunks.values());
+		int finishedCount = 0;
 		for (int i = 0; i < valuesCopy.size(); i++) {
 			ChunkSender s = valuesCopy.get(i);
-			r.drawWithShadow(matrixStack, String.format("%d:%d %s", s.x, s.z, s.status),
-					config.overlayX,	config.overlayY+i*config.overlayO,0xffffff);
+			if(!s.isFinished) {
+				r.drawWithShadow(matrixStack, String.format("%d:%d %s", s.x, s.z, s.status),
+						config.overlayX,	config.overlayY+(i-finishedCount+2)*config.overlayO,0xffffff);
+			} else {
+				finishedCount++;
+			}
 		}
+		r.drawWithShadow(matrixStack, String.format("10s:%d 1m:%d", finishedCount, finishedCount*6),
+				config.overlayX,	config.overlayY,0xffffff);
 	}
 
 	public static final KeyBinding keybindOpenConfig = KeyBindingHelper.registerKeyBinding(new KeyBinding("Open config", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_O, "Terrain reporter"));
