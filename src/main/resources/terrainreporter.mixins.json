@@ -1,12 +1,13 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "net.fabricmc.example.mixin",
+  "package": "net.maxsupermanhd.TerrainReporter.mixin",
   "compatibilityLevel": "JAVA_16",
   "mixins": [
   ],
   "client": [
-    "ExampleMixin"
+    "TerrainReporterMixin",
+    "ClientChunkManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

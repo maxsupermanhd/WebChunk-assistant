@@ -1,29 +1,30 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
+  "id": "terrainreporter",
   "version": "${version}",
 
-  "name": "Example Mod",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "name": "Terrain reporter",
+  "description": "This mod sends out chunk data to external http server",
   "authors": [
-    "Me!"
+    "FlexCoral (maxsupermanhd)"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
   },
 
   "license": "CC0-1.0",
-  "icon": "assets/modid/icon.png",
+  "icon": "assets/terrainreporter/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "main": [
-      "net.fabricmc.example.ExampleMod"
+      "net.maxsupermanhd.TerrainReporter.TerrainReporter"
+    ],
+    "modmenu": [
+      "net.maxsupermanhd.TerrainReporter.ModMenuIntegration"
     ]
   },
   "mixins": [
-    "modid.mixins.json"
+    "terrainreporter.mixins.json"
   ],
 
   "depends": {
@@ -33,6 +34,5 @@
     "java": ">=16"
   },
   "suggests": {
-    "another-mod": "*"
   }
 }
