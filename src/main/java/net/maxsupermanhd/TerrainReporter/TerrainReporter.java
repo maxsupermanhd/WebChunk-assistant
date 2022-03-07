@@ -9,8 +9,11 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.client.sound.SoundInstance;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.text.LiteralText;
@@ -31,9 +34,11 @@ import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static net.minecraft.item.Items.ELYTRA;
+import static net.minecraft.sound.SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP;
+
 public class TerrainReporter implements ModInitializer {
 	public static final Logger LOGGER = LogManager.getLogger("TerrainReporter");
-	public static boolean isActive = false;
 	public static class ChunkSender implements Runnable {
 		public String status = "Allocated";
 		public boolean isFinished = false;
@@ -170,6 +175,8 @@ public class TerrainReporter implements ModInitializer {
 	}
 
 	public static final KeyBinding keybindOpenConfig = KeyBindingHelper.registerKeyBinding(new KeyBinding("Open config", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_O, "Terrain reporter"));
+	public static final KeyBinding keybindToggle = KeyBindingHelper.registerKeyBinding(new KeyBinding("Toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_P, "Terrain reporter"));
+	public static final KeyBinding keybindToggleOverlay = KeyBindingHelper.registerKeyBinding(new KeyBinding("Toggle overlay", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_J, "Terrain reporter"));
 	@Override
 	public void onInitialize() {
 		AutoConfig.register(TerrainReporterConfig.class, JanksonConfigSerializer::new);
@@ -178,8 +185,22 @@ public class TerrainReporter implements ModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(this::clientTickEvent);
 	}
 
+	private int tickCounter = 0;
+
 	private void clientTickEvent(MinecraftClient mc) {
 		this.keyInputEvent(mc);
+		this.tickCounter++;
+		if(this.tickCounter % 20 == 0 && mc.player != null) {
+			TerrainReporterConfig config = AutoConfig.getConfigHolder(TerrainReporterConfig.class).getConfig();
+			if(config.elytraWarning.lowElytraSoundEnabled) {
+				ItemStack elytra = mc.player.getInventory().armor.get(2);
+				if(elytra.isOf(ELYTRA) && elytra.getMaxDamage()-elytra.getDamage() < config.elytraWarning.lowElytraDurabilityLeft) {
+					mc.getSoundManager().play(PositionedSoundInstance.master(ENTITY_EXPERIENCE_ORB_PICKUP, config.elytraWarning.lowElytraSoundPitch, config.elytraWarning.lowElytraSoundVolume));
+					mc.getSoundManager().play(PositionedSoundInstance.master(ENTITY_EXPERIENCE_ORB_PICKUP, config.elytraWarning.lowElytraSoundPitch, config.elytraWarning.lowElytraSoundVolume), 4);
+				}
+			}
+		}
+
 	}
 
 	public static void submitChunkTrigger(int x, int z) throws InterruptedException {
@@ -202,6 +223,16 @@ public class TerrainReporter implements ModInitializer {
 	private void keyInputEvent(MinecraftClient mc) {
 		while(keybindOpenConfig.wasPressed()) {
 			mc.setScreen(AutoConfig.getConfigScreen(TerrainReporterConfig.class, null).get());
+		}
+		while(keybindToggle.wasPressed()) {
+			TerrainReporterConfig config = AutoConfig.getConfigHolder(TerrainReporterConfig.class).getConfig();
+			config.enabled = !config.enabled;
+			AutoConfig.getConfigHolder(TerrainReporterConfig.class).save();
+		}
+		while(keybindToggleOverlay.wasPressed()) {
+			TerrainReporterConfig config = AutoConfig.getConfigHolder(TerrainReporterConfig.class).getConfig();
+			config.render_overlay = !config.render_overlay;
+			AutoConfig.getConfigHolder(TerrainReporterConfig.class).save();
 		}
 	}
 }
