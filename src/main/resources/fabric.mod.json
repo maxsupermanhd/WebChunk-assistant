@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "terrainreporter",
+  "id": "webchunkassistant",
   "version": "${version}",
 
-  "name": "Terrain reporter",
-  "description": "This mod sends out chunk data to external http server",
+  "name": "Client mod for WebChunk",
+  "description": "It is just like your regular map mods but on steroids",
   "authors": [
     "FlexCoral (maxsupermanhd)"
   ],
@@ -17,14 +17,14 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "net.maxsupermanhd.TerrainReporter.TerrainReporter"
+      "net.maxsupermanhd.WebChunkAssistant.ChunkAssistant"
     ],
     "modmenu": [
-      "net.maxsupermanhd.TerrainReporter.ModMenuIntegration"
+      "net.maxsupermanhd.WebChunkAssistant.ModMenuIntegration"
     ]
   },
   "mixins": [
-    "terrainreporter.mixins.json"
+    "WebChunkAssistant.mixins.json"
   ],
 
   "depends": {

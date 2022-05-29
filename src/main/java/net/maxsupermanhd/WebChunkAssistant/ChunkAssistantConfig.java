@@ -1,17 +1,13 @@
-package net.maxsupermanhd.TerrainReporter;
+package net.maxsupermanhd.WebChunkAssistant;
 
 import me.shedaniel.autoconfig.ConfigData;
 import me.shedaniel.autoconfig.annotation.Config;
 import me.shedaniel.autoconfig.annotation.ConfigEntry;
-import net.minecraft.client.gui.screen.Screen;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Config(name = "terrainreporter")
-public class TerrainReporterConfig implements ConfigData {
+public class ChunkAssistantConfig implements ConfigData {
     public boolean enabled = false;
-    String baseurl = "http://localhost:8261/api/submit/chunk/";
+    String baseurl = "http://localhost:8261/api/submit/chunk/%1$s";
     @ConfigEntry.Gui.PrefixText
     boolean render_overlay = true;
     int overlayX = 10;

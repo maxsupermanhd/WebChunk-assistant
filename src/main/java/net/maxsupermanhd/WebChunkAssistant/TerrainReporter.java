@@ -1,28 +1,17 @@
-package net.maxsupermanhd.TerrainReporter;
+package net.maxsupermanhd.WebChunkAssistant;
 
 import me.shedaniel.autoconfig.AutoConfig;
-import me.shedaniel.autoconfig.serializer.JanksonConfigSerializer;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.sound.PositionedSoundInstance;
-import net.minecraft.client.sound.SoundInstance;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.text.LiteralText;
-import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
-import net.minecraft.util.Formatting;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.lwjgl.glfw.GLFW;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -37,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static net.minecraft.item.Items.ELYTRA;
 import static net.minecraft.sound.SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP;
 
-public class TerrainReporter implements ModInitializer {
+public class TerrainReporter {
 	public static final Logger LOGGER = LogManager.getLogger("TerrainReporter");
 	public static class ChunkSender implements Runnable {
 		public String status = "Allocated";
@@ -65,7 +54,7 @@ public class TerrainReporter implements ModInitializer {
 			status = "Started";
 			LOGGER.info("Loaded chunk {} {}", x, z);
 			MinecraftClient mc = MinecraftClient.getInstance();
-			TerrainReporterConfig config = AutoConfig.getConfigHolder(TerrainReporterConfig.class).getConfig();
+			ChunkAssistantConfig config = AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig();
 			if(mc.world == null) {
 				LOGGER.info("Failed to submit chunk {}:{} because world is null", x, z);
 				this.addDebugMessage(mc, "Failed to submit chunk {}:{} because world is null", x, z);
@@ -153,8 +142,8 @@ public class TerrainReporter implements ModInitializer {
 
 	public static ConcurrentHashMap<Long, ChunkSender> SendingChunks = new ConcurrentHashMap<>();
 
-	private void RenderGameOverlayEvent(MatrixStack matrixStack, float delta) {
-		TerrainReporterConfig config = AutoConfig.getConfigHolder(TerrainReporterConfig.class).getConfig();
+	public void RenderGameOverlayEvent(MatrixStack matrixStack, float delta) {
+		ChunkAssistantConfig config = AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig();
 		if(!config.render_overlay) {
 			return;
 		}
@@ -174,24 +163,12 @@ public class TerrainReporter implements ModInitializer {
 				config.overlayX,	config.overlayY,0xffffff);
 	}
 
-	public static final KeyBinding keybindOpenConfig = KeyBindingHelper.registerKeyBinding(new KeyBinding("Open config", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_O, "Terrain reporter"));
-	public static final KeyBinding keybindToggle = KeyBindingHelper.registerKeyBinding(new KeyBinding("Toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_P, "Terrain reporter"));
-	public static final KeyBinding keybindToggleOverlay = KeyBindingHelper.registerKeyBinding(new KeyBinding("Toggle overlay", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_J, "Terrain reporter"));
-	@Override
-	public void onInitialize() {
-		AutoConfig.register(TerrainReporterConfig.class, JanksonConfigSerializer::new);
-		LOGGER.info("Hello Fabric world!");
-		HudRenderCallback.EVENT.register(this::RenderGameOverlayEvent);
-		ClientTickEvents.END_CLIENT_TICK.register(this::clientTickEvent);
-	}
-
 	private int tickCounter = 0;
 
-	private void clientTickEvent(MinecraftClient mc) {
-		this.keyInputEvent(mc);
+	public void clientTickEvent(MinecraftClient mc) {
 		this.tickCounter++;
 		if(this.tickCounter % 20 == 0 && mc.player != null) {
-			TerrainReporterConfig config = AutoConfig.getConfigHolder(TerrainReporterConfig.class).getConfig();
+			ChunkAssistantConfig config = AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig();
 			if(config.elytraWarning.lowElytraSoundEnabled) {
 				ItemStack elytra = mc.player.getInventory().armor.get(2);
 				if(elytra.isOf(ELYTRA) && elytra.getMaxDamage()-elytra.getDamage() < config.elytraWarning.lowElytraDurabilityLeft) {
@@ -217,22 +194,6 @@ public class TerrainReporter implements ModInitializer {
 			SendingChunks.put(id, sender);
 			new Thread(sender).start();
 			break;
-		}
-	}
-
-	private void keyInputEvent(MinecraftClient mc) {
-		while(keybindOpenConfig.wasPressed()) {
-			mc.setScreen(AutoConfig.getConfigScreen(TerrainReporterConfig.class, null).get());
-		}
-		while(keybindToggle.wasPressed()) {
-			TerrainReporterConfig config = AutoConfig.getConfigHolder(TerrainReporterConfig.class).getConfig();
-			config.enabled = !config.enabled;
-			AutoConfig.getConfigHolder(TerrainReporterConfig.class).save();
-		}
-		while(keybindToggleOverlay.wasPressed()) {
-			TerrainReporterConfig config = AutoConfig.getConfigHolder(TerrainReporterConfig.class).getConfig();
-			config.render_overlay = !config.render_overlay;
-			AutoConfig.getConfigHolder(TerrainReporterConfig.class).save();
 		}
 	}
 }

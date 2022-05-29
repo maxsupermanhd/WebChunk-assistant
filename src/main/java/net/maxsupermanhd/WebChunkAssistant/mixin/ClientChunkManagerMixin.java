@@ -1,8 +1,8 @@
-package net.maxsupermanhd.TerrainReporter.mixin;
+package net.maxsupermanhd.WebChunkAssistant.mixin;
 
 import me.shedaniel.autoconfig.AutoConfig;
-import net.maxsupermanhd.TerrainReporter.TerrainReporter;
-import net.maxsupermanhd.TerrainReporter.TerrainReporterConfig;
+import net.maxsupermanhd.WebChunkAssistant.TerrainReporter;
+import net.maxsupermanhd.WebChunkAssistant.ChunkAssistantConfig;
 import net.minecraft.client.world.ClientChunkManager;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
@@ -19,7 +19,7 @@ import java.util.function.Consumer;
 public class ClientChunkManagerMixin {
     @Inject(at = @At("TAIL"), method = "Lnet/minecraft/client/world/ClientChunkManager;loadChunkFromPacket(IILnet/minecraft/network/PacketByteBuf;Lnet/minecraft/nbt/NbtCompound;Ljava/util/function/Consumer;)Lnet/minecraft/world/chunk/WorldChunk;")
     private void loadChunkFromPacket(int x, int z, PacketByteBuf buf, NbtCompound nbt, Consumer<ChunkData.BlockEntityVisitor> consumer, CallbackInfoReturnable<WorldChunk> cir) throws InterruptedException {
-        TerrainReporterConfig config = AutoConfig.getConfigHolder(TerrainReporterConfig.class).getConfig();
+        ChunkAssistantConfig config = AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig();
         if(config.enabled) {
             TerrainReporter.submitChunkTrigger(x, z);
         }
