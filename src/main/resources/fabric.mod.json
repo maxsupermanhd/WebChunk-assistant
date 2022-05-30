@@ -3,7 +3,7 @@
   "id": "webchunkassistant",
   "version": "${version}",
 
-  "name": "Client mod for WebChunk",
+  "name": "WebChunk Assistant",
   "description": "It is just like your regular map mods but on steroids",
   "authors": [
     "FlexCoral (maxsupermanhd)"
@@ -12,7 +12,7 @@
   },
 
   "license": "CC0-1.0",
-  "icon": "assets/terrainreporter/icon.png",
+  "icon": "assets/webchunkassistant/icon.png",
 
   "environment": "*",
   "entrypoints": {

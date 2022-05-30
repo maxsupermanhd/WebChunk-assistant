@@ -1,0 +1,17 @@
+{
+  "text.autoconfig.terrainreporter.title": "Terrain reporter configuration",
+  "text.autoconfig.terrainreporter.option.enabled": "Toggle",
+  "text.autoconfig.terrainreporter.option.baseurl": "WebChunk server base url",
+  "text.autoconfig.terrainreporter.option.submiturl": "WebChunk server submit url",
+  "text.autoconfig.terrainreporter.option.render_overlay.@PrefixText": "URL has parameters: %%1$s - dimension, %%2$s - server url (as in connection entry), %%3$d - chunk x, %%4$d - chunk z",
+  "text.autoconfig.terrainreporter.option.render_overlay": "Enable overlay rendering",
+  "text.autoconfig.terrainreporter.option.overlayX": "Overlay offset X",
+  "text.autoconfig.terrainreporter.option.overlayY": "Overlay offset Y",
+  "text.autoconfig.terrainreporter.option.overlayO": "Overlay text spacing",
+  "text.autoconfig.terrainreporter.option.report_to_chat": "Report non 200 response to chat",
+  "text.autoconfig.terrainreporter.option.elytraWarning": "Elytra warning",
+  "text.autoconfig.terrainreporter.option.elytraWarning.lowElytraSoundEnabled": "Enabled",
+  "text.autoconfig.terrainreporter.option.elytraWarning.lowElytraDurabilityLeft": "Durability left",
+  "text.autoconfig.terrainreporter.option.elytraWarning.lowElytraSoundVolume": "Sound volume",
+  "text.autoconfig.terrainreporter.option.elytraWarning.lowElytraSoundPitch": "Sound pitch"
+}

@@ -66,7 +66,7 @@ public class TerrainReporter {
 			URL url;
 			try {
 				url = new URL(String.format(
-						config.baseurl,
+						config.submiturl,
 						mc.world.getRegistryKey().getValue().toString().replace("minecraft:", ""),
 						Objects.requireNonNull(mc.getCurrentServerEntry()).address,
 						x, z));
@@ -88,8 +88,11 @@ public class TerrainReporter {
 				waitAndDrop(3000);
 				return;
 			}
+			if(con == null) {
+				this.addDebugMessage(mc, "Con is null");
+				return;
+			}
 			try {
-				assert con != null;
 				con.setRequestMethod("POST");
 			} catch (ProtocolException e) {
 				status = "Broke on setting protocol";

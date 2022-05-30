@@ -7,7 +7,8 @@ import me.shedaniel.autoconfig.annotation.ConfigEntry;
 @Config(name = "terrainreporter")
 public class ChunkAssistantConfig implements ConfigData {
     public boolean enabled = false;
-    String baseurl = "http://localhost:8261/api/submit/chunk/%1$s";
+    String baseurl = "http://localhost:8261/";
+    String submiturl = "http://localhost:8261/api/submit/chunk/%1$s";
     @ConfigEntry.Gui.PrefixText
     boolean render_overlay = true;
     int overlayX = 10;
