@@ -108,8 +108,8 @@ public class WebMapScreen extends Screen {
         Screen.fill(matrices, 0, 0, this.width, this.height, 0xFF000000);
         int fitx = width / maptilesize + 3;
         int fitz = height / maptilesize + 3;
-        for(int offz = -(fitz/2-1); offz < fitz/2+1; offz++) {
-            for(int offx = -(fitx/2-1); offx < fitx/2+1; offx++) {
+        for(int offz = -(fitz/2+1); offz < fitz/2+1; offz++) {
+            for(int offx = -(fitx/2+1); offx < fitx/2+1; offx++) {
                 renderTile(matrices, new MapTilePos("phoenixanarchy.com", "overworld", mapx+offx, mapz+offz, mapzoom), offx*maptilesize, offz*maptilesize);
             }
         }
@@ -118,15 +118,22 @@ public class WebMapScreen extends Screen {
         this.textRenderer.drawWithShadow(matrices, String.format("Map zoom: %d %d", mapzoom, maptilesize), 10, 30, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Tiles loaded: %d", loadedTextures.size()), 10, 40, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Mouse: %d %d %b", mouseX, mouseY, this.isDragging()), 10, 50, 0x00FFFFFF);
+        this.drawVerticalLine(matrices, width/2-1, height/2-3, height/2-10, 0xFF000000);
+        this.drawVerticalLine(matrices, width/2  , height/2-3, height/2-10, 0xFFFFFFFF);
+        this.drawVerticalLine(matrices, width/2+1, height/2-3, height/2-10, 0xFF000000);
+        this.drawVerticalLine(matrices, width/2-1, height/2+3, height/2+10, 0xFF000000);
+        this.drawVerticalLine(matrices, width/2  , height/2+3, height/2+10, 0xFFFFFFFF);
+        this.drawVerticalLine(matrices, width/2+1, height/2+3, height/2+10, 0xFF000000);
+        this.drawHorizontalLine(matrices, width/2-3, width/2-10, height/2+1, 0xFF000000);
+        this.drawHorizontalLine(matrices, width/2-3, width/2-10, height/2  , 0xFFFFFFFF);
+        this.drawHorizontalLine(matrices, width/2-3, width/2-10, height/2-1, 0xFF000000);
+        this.drawHorizontalLine(matrices, width/2+3, width/2+10, height/2+1, 0xFF000000);
+        this.drawHorizontalLine(matrices, width/2+3, width/2+10, height/2  , 0xFFFFFFFF);
+        this.drawHorizontalLine(matrices, width/2+3, width/2+10, height/2-1, 0xFF000000);
         super.render(matrices, mouseX, mouseY, delta);
     }
 
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        double dx = deltaX / maptilesize;
-        double dy = deltaY / maptilesize;
-        mapoffsetx -= dx;
-        mapoffsety -= dy;
+    public void normalizeOffset() {
         if (mapoffsetx > 1) {
             mapx += 1;
             mapoffsetx -= 1;
@@ -141,7 +148,24 @@ public class WebMapScreen extends Screen {
             mapz -= 1;
             mapoffsety += 1;
         }
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        double dx = deltaX / maptilesize;
+        double dy = deltaY / maptilesize;
+        mapoffsetx -= dx;
+        mapoffsety -= dy;
+        normalizeOffset();
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    }
+
+    public double coordToTile(int zoom, long coord) {
+        return coord/(Math.pow(2, zoom)*16);
+    }
+
+    public long tileToCoord(int zoom, double tile) {
+        return (long) (Math.pow(2, zoom)*16*tile);
     }
 
     @Override
@@ -152,17 +176,26 @@ public class WebMapScreen extends Screen {
             maptilesize -= zoomsensitivity;
         }
         int zoomchunks = (int) Math.pow(2, mapzoom);
-        if(maptilesize < zoombreaklow) {
+        long keepx = tileToCoord(mapzoom, mapx+mapoffsetx);
+        long keepz = tileToCoord(mapzoom, mapz+mapoffsety);
+        if(maptilesize-1 < zoombreaklow) {
             maptilesize += zoombreakhigh - zoombreaklow;
-            mapx = (long) ((mapx * zoomchunks) / Math.pow(2, mapzoom+1));
-            mapz = (long) ((mapz * zoomchunks) / Math.pow(2, mapzoom+1));
             mapzoom += 1;
-        } else if (maptilesize > zoombreakhigh) {
+        } else if (maptilesize+1 > zoombreakhigh) {
             maptilesize -= zoombreakhigh - zoombreaklow;
-            mapx = (long) ((mapx * zoomchunks) / Math.pow(2, mapzoom-1));
-            mapz = (long) ((mapz * zoomchunks) / Math.pow(2, mapzoom-1));
+//            mapx = (long) ((mapx * zoomchunks) / Math.pow(2, mapzoom-1))+1;
+//            mapz = (long) ((mapz * zoomchunks) / Math.pow(2, mapzoom-1))+1;
+//            mapoffsetx = mapoffsetx*2-1;
+//            mapoffsety = mapoffsety*2-1;
             mapzoom -= 1;
         }
+        double newmapx = coordToTile(mapzoom, keepx);
+        double newmapz = coordToTile(mapzoom, keepz);
+        mapx = (long)newmapx;
+        mapz = (long)newmapz;
+        mapoffsetx = newmapx - mapx;
+        mapoffsety = newmapz - mapz;
+        normalizeOffset();
         return super.mouseScrolled(mouseX, mouseY, amount);
     }
 
