@@ -19,6 +19,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryEntry;
 import net.minecraft.world.*;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
@@ -66,7 +67,7 @@ public class ClientChunkSerializer extends ChunkSerializer {
         NbtList nbtList = new NbtList();
         LightingProvider lightingProvider = world.getChunkManager().getLightingProvider();
         Registry<Biome> registry = world.getRegistryManager().get(Registry.BIOME_KEY);
-        Codec<PalettedContainer<Biome>> codec = ClientChunkSerializer.createCodec(registry);
+        Codec<PalettedContainer<RegistryEntry<Biome>>> codec = createCodec(registry);
         boolean bl = chunk.isLightOn();
         for (int i = lightingProvider.getBottomY(); i < lightingProvider.getTopY(); ++i) {
             int j = chunk.sectionCoordToIndex(i);
@@ -78,8 +79,7 @@ public class ClientChunkSerializer extends ChunkSerializer {
             if (bl2) {
                 ChunkSection chunkSection = chunkSections[j];
                 nbtCompound2.put("block_states", CODEC.encodeStart(NbtOps.INSTANCE, chunkSection.getBlockStateContainer()).getOrThrow(false, LOGGER::error));
-                // TODO: fix biomes
-//                nbtCompound2.put("biomes", codec.encodeStart(NbtOps.INSTANCE, chunkSection.getBiomeContainer()).getOrThrow(false, LOGGER::error));
+                nbtCompound2.put("biomes", codec.encodeStart(NbtOps.INSTANCE, chunkSection.getBiomeContainer()).getOrThrow(false, LOGGER::error));
             }
             if (chunkNibbleArray != null && !chunkNibbleArray.isUninitialized()) {
                 nbtCompound2.putByteArray("BlockLight", chunkNibbleArray.asByteArray());
@@ -128,8 +128,8 @@ public class ClientChunkSerializer extends ChunkSerializer {
         return nbtCompound;
     }
 
-    private static Codec<PalettedContainer<Biome>> createCodec(Registry<Biome> biomeRegistry) {
-        return PalettedContainer.createCodec(biomeRegistry, biomeRegistry.getCodec(), PalettedContainer.PaletteProvider.BIOME, biomeRegistry.getOrThrow(BiomeKeys.PLAINS));
+    private static Codec<PalettedContainer<RegistryEntry<Biome>>> createCodec(Registry<Biome> biomeRegistry) {
+        return PalettedContainer.createCodec(biomeRegistry.getIndexedEntries(), biomeRegistry.createEntryCodec(), PalettedContainer.PaletteProvider.BIOME, biomeRegistry.entryOf(BiomeKeys.PLAINS));
     }
 
     static {

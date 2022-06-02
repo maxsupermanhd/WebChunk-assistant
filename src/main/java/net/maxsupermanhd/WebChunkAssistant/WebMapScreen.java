@@ -4,9 +4,11 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import me.shedaniel.autoconfig.AutoConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.apache.logging.log4j.LogManager;
@@ -37,6 +39,8 @@ public class WebMapScreen extends Screen {
     public int zoombreaklow = 192;
     public int zoombreakhigh = 320;
     public int zoomsensitivity = 32;
+    public String worldName = "";
+    public String dimensionName = "";
     private final ExecutorService executorService = Executors.newFixedThreadPool(12);
     protected WebMapScreen(Text title) {
         super(title);
@@ -47,6 +51,15 @@ public class WebMapScreen extends Screen {
     }
     @Override
     public void init() {
+        this.clearChildren();
+        this.addDrawableChild(new ButtonWidget(
+                this.width - (textRenderer.getWidth("Select map") + 4), 2,
+                textRenderer.getWidth("Select map") + 4, 10,
+                new LiteralText("Select map"), (button) -> {
+                    assert this.client != null;
+                    this.client.setScreen(new WorldAndDimSelectorScreen(this, new LiteralText("World and dimension select")));
+                }
+        ));
     }
 
     public void drawBox(MatrixStack matrices, int x0, int y0, int x1, int y1) {
@@ -103,21 +116,56 @@ public class WebMapScreen extends Screen {
         return new URL(String.format("%sworlds/%s/%s/tiles/terrain/%d/%d/%d/png", config.baseurl, pos.world, pos.dimension, pos.zoom, pos.cx, pos.cz));
     }
 
+    public void setWorldName(String w) {
+        this.worldName = w;
+    }
+    public void setDimensionName(String d) {
+        this.dimensionName = d;
+    }
+
+    public void renderError(MatrixStack matrices, String errtext) {
+        renderCenteredText(matrices, errtext, 0x00FF6666);
+    }
+
+    public void renderCenteredText(MatrixStack matrices, String errtext, int color) {
+        int xpos = width/2 - this.textRenderer.getWidth(errtext)/2;
+        this.textRenderer.drawWithShadow(matrices, errtext, xpos, 40, color);
+    }
+
     @Override
     public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
         Screen.fill(matrices, 0, 0, this.width, this.height, 0xFF000000);
         int fitx = width / maptilesize + 3;
         int fitz = height / maptilesize + 3;
+        if(worldName.isEmpty() || dimensionName.isEmpty()) {
+            renderCenteredText(matrices, "World/dimension not selected", 0x00FFFFFF);
+            super.render(matrices, mouseX, mouseY, delta);
+            return;
+        }
+//        if(mc.isInSingleplayer() || (mc.getCurrentServerEntry() != null && mc.getCurrentServerEntry().isLocal())) {
+//            renderError(matrices, "Only for online multiplayer");
+//            return;
+//        }
+//        if(mc.getCurrentServerEntry() != null) {
+//            renderError(matrices, "Server entry is null");
+//            return;
+//        }
+//        if(mc.world != null) {
+//            renderError(matrices, "World is null");
+//        }
+//        String serverName = mc.getCurrentServerEntry().address;
+//        String dimensionName = mc.world.getRegistryKey().getValue().getPath();
         for(int offz = -(fitz/2+1); offz < fitz/2+1; offz++) {
             for(int offx = -(fitx/2+1); offx < fitx/2+1; offx++) {
-                renderTile(matrices, new MapTilePos("phoenixanarchy.com", "overworld", mapx+offx, mapz+offz, mapzoom), offx*maptilesize, offz*maptilesize);
+                renderTile(matrices, new MapTilePos(worldName, dimensionName, mapx+offx, mapz+offz, mapzoom), offx*maptilesize, offz*maptilesize);
             }
         }
-        this.textRenderer.drawWithShadow(matrices, String.format("Map position: %d:%d (x%d z%d)", mapx, mapz, mapx*(16L *(int)Math.pow(2, mapzoom)), mapz*(16L *(int)Math.pow(2, mapzoom))), 10, 10, 0x00FFFFFF);
+        this.textRenderer.drawWithShadow(matrices, worldName, width - textRenderer.getWidth(worldName), 10, 0x00FFFFFF);
+        this.textRenderer.drawWithShadow(matrices, dimensionName, width - textRenderer.getWidth(dimensionName), 20, 0x00FFFFFF);
+        this.textRenderer.drawWithShadow(matrices, String.format("Map position: %d:%d (x%d z%d)", mapx, mapz, tileToCoord(mapzoom, mapx+mapoffsetx), tileToCoord(mapzoom, mapz+mapoffsety)), 10, 10, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Map offset: %3.3f %3.3f", mapoffsetx, mapoffsety), 10, 20, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Map zoom: %d %d", mapzoom, maptilesize), 10, 30, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Tiles loaded: %d", loadedTextures.size()), 10, 40, 0x00FFFFFF);
-        this.textRenderer.drawWithShadow(matrices, String.format("Mouse: %d %d %b", mouseX, mouseY, this.isDragging()), 10, 50, 0x00FFFFFF);
         this.drawVerticalLine(matrices, width/2-1, height/2-3, height/2-10, 0xFF000000);
         this.drawVerticalLine(matrices, width/2  , height/2-3, height/2-10, 0xFFFFFFFF);
         this.drawVerticalLine(matrices, width/2+1, height/2-3, height/2-10, 0xFF000000);

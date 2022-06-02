@@ -1,7 +1,6 @@
 package net.maxsupermanhd.WebChunkAssistant;
 
 import me.shedaniel.autoconfig.AutoConfig;
-import net.fabricmc.api.ModInitializer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.sound.PositionedSoundInstance;
@@ -20,7 +19,9 @@ import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static net.minecraft.item.Items.ELYTRA;
