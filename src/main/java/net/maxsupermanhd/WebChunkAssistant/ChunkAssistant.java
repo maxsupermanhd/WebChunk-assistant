@@ -16,7 +16,6 @@ import org.lwjgl.glfw.GLFW;
 
 public class ChunkAssistant implements ModInitializer  {
     public static final Logger LOGGER = LogManager.getLogger("ChunkAssistant");
-
     public TerrainReporter reporter = new TerrainReporter();
     public static final KeyBinding keybindOpenConfig = KeyBindingHelper.registerKeyBinding(new KeyBinding("Open config", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_O, "WebChunk Assistant"));
     public static final KeyBinding keybindOpenMap = KeyBindingHelper.registerKeyBinding(new KeyBinding("Open map", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_HOME, "WebChunk Assistant"));

@@ -2,22 +2,28 @@ package net.maxsupermanhd.WebChunkAssistant;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import me.shedaniel.autoconfig.AutoConfig;
+import net.fabricmc.loader.api.ModContainer;
+import net.fabricmc.loader.impl.FabricLoaderImpl;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.PressableTextWidget;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,25 +47,62 @@ public class WebMapScreen extends Screen {
     public int zoomsensitivity = 32;
     public String worldName = "";
     public String dimensionName = "";
+    public String format = "terrain";
+    public boolean disableCache = false;
+    public String cachedUserAgent = "WebChunk Assistant";
+    public boolean reinitWidgets = false;
     private final ExecutorService executorService = Executors.newFixedThreadPool(12);
     protected WebMapScreen(Text title) {
         super(title);
+        for (ModContainer m : FabricLoaderImpl.INSTANCE.getAllMods()) {
+            if(m.getMetadata().getId().equalsIgnoreCase("webchunkassistant")) {
+                cachedUserAgent = "WebChunk Assistant " + m.getMetadata().getVersion().getFriendlyString();
+                break;
+            }
+        }
     }
 
     @Override
     public void tick() {
+        if(reinitWidgets) {
+            initWidgets();
+            reinitWidgets = false;
+        }
     }
     @Override
     public void init() {
+        initWidgets();
+    }
+
+    public void initWidgets() {
         this.clearChildren();
         this.addDrawableChild(new ButtonWidget(
                 this.width - (textRenderer.getWidth("Select map") + 4), 2,
                 textRenderer.getWidth("Select map") + 4, 10,
                 new LiteralText("Select map"), (button) -> {
+            assert this.client != null;
+            this.client.setScreen(new WorldAndDimSelectorScreen(this, new LiteralText("World and dimension select")));
+        }
+        ));
+        this.addDrawableChild(new ButtonWidget(
+                this.width - (textRenderer.getWidth("Select renderer") + 4), 14,
+                textRenderer.getWidth("Select renderer") + 4, 10,
+                new LiteralText("Select renderer"), (button) -> {
                     assert this.client != null;
-                    this.client.setScreen(new WorldAndDimSelectorScreen(this, new LiteralText("World and dimension select")));
+                    this.client.setScreen(new RendererSelectorScreen(this, new LiteralText("Renderer select")));
                 }
         ));
+        this.addDrawableChild(new PressableTextWidget(
+                this.width - textRenderer.getWidth("NOcache") - 2, this.height - textRenderer.fontHeight - 2,
+                textRenderer.getWidth("NOcache"), textRenderer.fontHeight, new LiteralText(this.getCacheLabel()),
+                b -> {this.disableCache = !this.disableCache;this.reinitWidgets = true;}, this.textRenderer));
+    }
+
+    public String getCacheLabel() {
+        if(this.disableCache) {
+            return "NOcache";
+        }
+        return "cache";
     }
 
     public void drawBox(MatrixStack matrices, int x0, int y0, int x1, int y1) {
@@ -74,8 +117,15 @@ public class WebMapScreen extends Screen {
         int oy = (int) (this.height/2 - maptilesize*mapoffsety) + offy;
         WebTexture tex = loadedTextures.computeIfAbsent(pos, (MapTilePos p) -> {
             WebTexture t;
+            List<String> h = new ArrayList<>();
+            h.add("User-Agent");
+            h.add(cachedUserAgent);
+            if(this.disableCache) {
+                h.add("Cache-Control");
+                h.add("no-cache");
+            }
             try {
-                t = new WebTexture(getURIfromPos(pos), pos.toIdentifier());
+                t = new WebTexture(getURIfromPos(pos), pos.toIdentifier(), h.toArray(new String[0]));
             } catch (Exception e) {
                 LOGGER.info(e);
                 return null;
@@ -113,7 +163,7 @@ public class WebMapScreen extends Screen {
 
     public URL getURIfromPos(MapTilePos pos) throws MalformedURLException {
         ChunkAssistantConfig config = AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig();
-        return new URL(String.format("%sworlds/%s/%s/tiles/terrain/%d/%d/%d/png", config.baseurl, pos.world, pos.dimension, pos.zoom, pos.cx, pos.cz));
+        return new URL(String.format("%sworlds/%s/%s/tiles/%s/%d/%d/%d/png", config.baseurl, pos.world, pos.dimension, pos.format, pos.zoom, pos.cx, pos.cz));
     }
 
     public void setWorldName(String w) {
@@ -121,6 +171,9 @@ public class WebMapScreen extends Screen {
     }
     public void setDimensionName(String d) {
         this.dimensionName = d;
+    }
+    public void setFormat(String f) {
+        this.format = f;
     }
 
     public void renderError(MatrixStack matrices, String errtext) {
@@ -142,26 +195,14 @@ public class WebMapScreen extends Screen {
             super.render(matrices, mouseX, mouseY, delta);
             return;
         }
-//        if(mc.isInSingleplayer() || (mc.getCurrentServerEntry() != null && mc.getCurrentServerEntry().isLocal())) {
-//            renderError(matrices, "Only for online multiplayer");
-//            return;
-//        }
-//        if(mc.getCurrentServerEntry() != null) {
-//            renderError(matrices, "Server entry is null");
-//            return;
-//        }
-//        if(mc.world != null) {
-//            renderError(matrices, "World is null");
-//        }
-//        String serverName = mc.getCurrentServerEntry().address;
-//        String dimensionName = mc.world.getRegistryKey().getValue().getPath();
         for(int offz = -(fitz/2+1); offz < fitz/2+1; offz++) {
             for(int offx = -(fitx/2+1); offx < fitx/2+1; offx++) {
-                renderTile(matrices, new MapTilePos(worldName, dimensionName, mapx+offx, mapz+offz, mapzoom), offx*maptilesize, offz*maptilesize);
+                renderTile(matrices, new MapTilePos(worldName, dimensionName, format, mapx+offx, mapz+offz, mapzoom), offx*maptilesize, offz*maptilesize);
             }
         }
-        this.textRenderer.drawWithShadow(matrices, worldName, width - textRenderer.getWidth(worldName), 10, 0x00FFFFFF);
-        this.textRenderer.drawWithShadow(matrices, dimensionName, width - textRenderer.getWidth(dimensionName), 20, 0x00FFFFFF);
+        String worlddim = worldName + " " + dimensionName;
+        this.textRenderer.drawWithShadow(matrices, worlddim, width - textRenderer.getWidth(worlddim)-textRenderer.getWidth("Select map")-8, 2, 0x00FFFFFF);
+        this.textRenderer.drawWithShadow(matrices, format, width - textRenderer.getWidth(format)-textRenderer.getWidth("Select format")-8, 14, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Map position: %d:%d (x%d z%d)", mapx, mapz, tileToCoord(mapzoom, mapx+mapoffsetx), tileToCoord(mapzoom, mapz+mapoffsety)), 10, 10, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Map offset: %3.3f %3.3f", mapoffsetx, mapoffsety), 10, 20, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Map zoom: %d %d", mapzoom, maptilesize), 10, 30, 0x00FFFFFF);
@@ -262,24 +303,32 @@ public class WebMapScreen extends Screen {
         if(keyCode == GLFW.GLFW_KEY_R) {
             loadedTextures.clear();
         }
+        if(keyCode == GLFW.GLFW_KEY_D) {
+            try {
+                Util.getOperatingSystem().open(this.getURIfromPos(new MapTilePos(this.worldName, this.dimensionName, this.format, this.mapx, this.mapz, this.mapzoom)));
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            }
+        }
         return super.keyReleased(keyCode, scanCode, modifiers);
     }
 
     public static class MapTilePos {
-        public String world, dimension;
+        public String world, dimension, format;
         public long cx, cz, zoom;
-        MapTilePos(String world, String dimension, long cx, long cz, int zoom) {
+        MapTilePos(String world, String dimension, String format, long cx, long cz, int zoom) {
             this.world = world;
             this.dimension = dimension;
             this.cx = cx;
             this.cz = cz;
             this.zoom = zoom;
+            this.format = format;
         }
         public Identifier toIdentifier() {
             if(dimension.contains("minecraft:")) {
                 dimension = dimension.replaceFirst("minecraft:", "");
             }
-            return new Identifier(String.format("%s/%s/%d/%d/%d", world, dimension, zoom, cx, cz));
+            return new Identifier(String.format("%s/%s/%s/%d/%d/%d", world, dimension, format, zoom, cx, cz));
         }
 
         @Override

@@ -9,7 +9,10 @@ public class ChunkAssistantConfig implements ConfigData {
     public boolean enabled = false;
     String baseurl = "http://localhost:8261/";
     String submiturl = "http://localhost:8261/api/submit/chunk/%1$s";
+    String submitWorld = "";
+    String submitDimension = "";
     String apiGetDimensions = "http://localhost:8261/api/dims";
+    String apiGetRenderers = "http://localhost:8261/api/renderers";
     @ConfigEntry.Gui.PrefixText
     boolean render_overlay = true;
     int overlayX = 10;

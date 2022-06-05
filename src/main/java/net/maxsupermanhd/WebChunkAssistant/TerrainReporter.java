@@ -52,95 +52,70 @@ public class TerrainReporter {
 			TerrainReporter.SendingChunks.remove(allocatedAt);
 		}
 		public void run() {
-			status = "Started";
-			LOGGER.info("Loaded chunk {} {}", x, z);
 			MinecraftClient mc = MinecraftClient.getInstance();
-			ChunkAssistantConfig config = AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig();
-			if(mc.world == null) {
-				LOGGER.info("Failed to submit chunk {}:{} because world is null", x, z);
-				this.addDebugMessage(mc, "Failed to submit chunk {}:{} because world is null", x, z);
-				waitAndDrop(3000);
-				return;
-			}
-			status = "Serializing";
-			NbtCompound body = ClientChunkSerializer.serializeClientChunk(mc.world, x, z);
-			URL url;
 			try {
-				url = new URL(String.format(
-						config.submiturl,
-						mc.world.getRegistryKey().getValue().toString().replace("minecraft:", ""),
-						Objects.requireNonNull(mc.getCurrentServerEntry()).address,
-						x, z));
-			} catch (MalformedURLException e) {
-				status = "wrong url man!";
-				e.printStackTrace();
-				this.addDebugMessage(mc, "Wrong URL! [{0}]", e.toString());
-				waitAndDrop(3000);
-				return;
-			}
-			HttpURLConnection con;
-			try {
+				status = "Started";
+				LOGGER.info("Loaded chunk {} {}", x, z);
+				ChunkAssistantConfig config = AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig();
+				if(mc.world == null) {
+					throw new Exception(String.format("Failed to submit chunk %d:%d because world is null", x, z));
+				}
+				status = "Serializing";
+				NbtCompound body = ClientChunkSerializer.serializeClientChunk(mc.world, x, z);
+				URL url;
+				String subWorld = config.submitWorld;
+				if(subWorld.isEmpty()) {
+					var e = mc.getCurrentServerEntry();
+					if(e == null) {
+						throw new Exception("server entry null and no world name set");
+					} else {
+						subWorld = e.address;
+					}
+				}
+				String subDim = config.submitDimension;
+				if(subDim.isEmpty()) {
+					subDim = mc.world.getRegistryKey().getValue().toString().replace("minecraft:", "");
+				}
+				url = new URL(String.format(config.submiturl, subDim, subWorld,	x, z));
+				HttpURLConnection con;
 				status = "Connecting";
 				con = (HttpURLConnection)url.openConnection();
-			} catch (IOException e) {
-				status = "Broke on connecting to server";
-				this.addDebugMessage(mc, "Failed to connect to server! [{0}]", e.toString());
-				e.printStackTrace();
-				waitAndDrop(3000);
-				return;
-			}
-			if(con == null) {
-				this.addDebugMessage(mc, "Con is null");
-				return;
-			}
-			try {
+				if(con == null) {
+					this.addDebugMessage(mc, "Con is null");
+					return;
+				}
 				con.setRequestMethod("POST");
-			} catch (ProtocolException e) {
-				status = "Broke on setting protocol";
-				e.printStackTrace();
-				this.addDebugMessage(mc, "Failed to set request method! [{0}]", e.toString());
-				waitAndDrop(3000);
-				return;
-			}
-			con.setRequestProperty("Content-Type", "binary/octet-stream");
-			con.setRequestProperty("Accept", "text/plain");
-			con.setDoOutput(true);
-			status = "Writing";
-			try(OutputStream os = con.getOutputStream()) {
-				DataOutputStream o = new DataOutputStream(os);
+				con.setRequestProperty("Content-Type", "binary/octet-stream");
+				con.setRequestProperty("Accept", "text/plain");
+				con.setDoOutput(true);
+				status = "Writing";
+				DataOutputStream o = new DataOutputStream(con.getOutputStream());
 				o.write(1);
 				NbtIo.writeCompressed(body, o);
-			} catch (IOException e) {
-				status = "Broke on sending chunk";
-				e.printStackTrace();
-				this.addDebugMessage(mc, "Failed to send chunk! [{0}]", e.toString());
-				waitAndDrop(3000);
-				return;
-			}
-			StringBuilder response = new StringBuilder();
-			int httpstatus;
-			status = "Reading response";
-			try(BufferedReader br = new BufferedReader(
-					new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+				StringBuilder response = new StringBuilder();
+				status = "Reading response";
+				int httpstatus = con.getResponseCode();
+				InputStream is;
+				if(httpstatus != 200) {
+//					throw new Exception(String.format("Server answered http %d - %s", httpstatus, response));
+					is = con.getErrorStream();
+				} else {
+					is = con.getInputStream();
+				}
+				BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
 				String responseLine;
 				while ((responseLine = br.readLine()) != null) {
 					response.append(responseLine.trim());
 				}
-				LOGGER.info(response.toString());
-				httpstatus = con.getResponseCode();
-			} catch (IOException e) {
-				status = "Broke on reading response";
+				status = response.toString();
+				isFinished = true;
+				waitAndDrop(1000);
+			} catch(Exception e) {
+				LOGGER.info(e);
 				e.printStackTrace();
-				this.addDebugMessage(mc, "Failed on reading response! [{0}]", e.toString());
+				this.addDebugMessage(mc, e.toString());
 				waitAndDrop(3000);
-				return;
 			}
-			if(httpstatus != 200 && config.report_to_chat) {
-				this.addDebugMessage(mc, "Server answered http {0} - {1}", httpstatus, response.toString());
-			}
-			status = "Done";
-			isFinished = true;
-			waitAndDrop(10000);
 		}
 	}
 

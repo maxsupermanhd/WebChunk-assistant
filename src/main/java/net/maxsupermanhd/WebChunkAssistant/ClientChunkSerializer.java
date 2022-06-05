@@ -52,7 +52,7 @@ public class ClientChunkSerializer extends ChunkSerializer {
         nbtCompound.putInt("zPos", chunkPos.z);
         nbtCompound.putLong("LastUpdate", world.getTime());
         nbtCompound.putLong("InhabitedTime", chunk.getInhabitedTime());
-        nbtCompound.putString("Status", chunk.getStatus().getId());
+        nbtCompound.putString("Status", "ripped");
         BlendingData blendingData = chunk.getBlendingData();
         if (blendingData != null) {
             BlendingData.CODEC.encodeStart(NbtOps.INSTANCE, blendingData).resultOrPartial(LOGGER::error).ifPresent(nbtElement -> nbtCompound.put("blending_data", (NbtElement)nbtElement));
