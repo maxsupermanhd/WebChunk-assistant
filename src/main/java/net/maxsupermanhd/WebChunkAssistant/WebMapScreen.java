@@ -48,6 +48,7 @@ public class WebMapScreen extends Screen {
     public String worldName = "";
     public String dimensionName = "";
     public String format = "terrain";
+    public String[] overlays = {};
     public boolean disableCache = false;
     public String cachedUserAgent = "WebChunk Assistant";
     public boolean reinitWidgets = false;
@@ -133,6 +134,7 @@ public class WebMapScreen extends Screen {
             executorService.submit(t);
             return t;
         });
+        RenderSystem.enableBlend();
         RenderSystem.setShader(GameRenderer::getPositionTexShader);
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         boolean drawTex = true;
@@ -158,6 +160,7 @@ public class WebMapScreen extends Screen {
         if(drawTex) {
             drawTexture(matrices, ox, oy, 0.0f, 0.0f, maptilesize, maptilesize, maptilesize, maptilesize);
         }
+        RenderSystem.disableBlend();
         drawBox(matrices, ox, oy, (ox+maptilesize), (oy+maptilesize));
     }
 
@@ -174,6 +177,9 @@ public class WebMapScreen extends Screen {
     }
     public void setFormat(String f) {
         this.format = f;
+    }
+    public void setOverlays(String[] o) {
+        this.overlays = o;
     }
 
     public void renderError(MatrixStack matrices, String errtext) {
@@ -200,9 +206,18 @@ public class WebMapScreen extends Screen {
                 renderTile(matrices, new MapTilePos(worldName, dimensionName, format, mapx+offx, mapz+offz, mapzoom), offx*maptilesize, offz*maptilesize);
             }
         }
+        if(overlays != null) {
+            for (String o : overlays) {
+                for(int offz = -(fitz/2+1); offz < fitz/2+1; offz++) {
+                    for(int offx = -(fitx/2+1); offx < fitx/2+1; offx++) {
+                        renderTile(matrices, new MapTilePos(worldName, dimensionName, o, mapx+offx, mapz+offz, mapzoom), offx*maptilesize, offz*maptilesize);
+                    }
+                }
+            }
+        }
         String worlddim = worldName + " " + dimensionName;
         this.textRenderer.drawWithShadow(matrices, worlddim, width - textRenderer.getWidth(worlddim)-textRenderer.getWidth("Select map")-8, 2, 0x00FFFFFF);
-        this.textRenderer.drawWithShadow(matrices, format, width - textRenderer.getWidth(format)-textRenderer.getWidth("Select format")-8, 14, 0x00FFFFFF);
+        this.textRenderer.drawWithShadow(matrices, format, width - textRenderer.getWidth(format)-textRenderer.getWidth("Select renderer")-8, 14, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Map position: %d:%d (x%d z%d)", mapx, mapz, tileToCoord(mapzoom, mapx+mapoffsetx), tileToCoord(mapzoom, mapz+mapoffsety)), 10, 10, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Map offset: %3.3f %3.3f", mapoffsetx, mapoffsety), 10, 20, 0x00FFFFFF);
         this.textRenderer.drawWithShadow(matrices, String.format("Map zoom: %d %d", mapzoom, maptilesize), 10, 30, 0x00FFFFFF);
@@ -336,12 +351,12 @@ public class WebMapScreen extends Screen {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             MapTilePos that = (MapTilePos) o;
-            return cx == that.cx && cz == that.cz && zoom == that.zoom && world.equals(that.world) && dimension.equals(that.dimension);
+            return cx == that.cx && cz == that.cz && zoom == that.zoom && world.equals(that.world) && dimension.equals(that.dimension) && format.equals(that.format);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(world, dimension, cx, cz, zoom);
+            return Objects.hash(world, dimension, cx, cz, zoom, format);
         }
     }
 }

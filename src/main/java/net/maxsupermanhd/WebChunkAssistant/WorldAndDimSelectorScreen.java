@@ -33,6 +33,7 @@ public class WorldAndDimSelectorScreen extends Screen {
         super(title);
         this.parent = parent;
         requesterThread = new Thread(() -> {
+            String rsp = null;
             try {
                 var url = new URL(AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig().apiGetDimensions);
                 var con = (HttpURLConnection)url.openConnection();
@@ -48,18 +49,26 @@ public class WorldAndDimSelectorScreen extends Screen {
                 StringBuilder response = new StringBuilder();
                 while ((responseLine = br.readLine()) != null)
                     response.append(responseLine.trim());
-                dimslock.lock();
-                dims = new Gson().fromJson(response.toString(), Dimension[].class);
-                dataReady = true;
-                dimslock.unlock();
-                initWidgets();
+                rsp = response.toString();
             } catch (Exception e) {
                 dimslock.lock();
                 error = e.toString();
                 dimslock.unlock();
                 LOGGER.info(e);
                 e.printStackTrace();
+                return;
             }
+            dimslock.lock();
+            try {
+                dims = new Gson().fromJson(rsp.toString(), Dimension[].class);
+                dataReady = true;
+            } catch (Exception e) {
+                error = e.toString();
+                LOGGER.info(e);
+                e.printStackTrace();
+            }
+            dimslock.unlock();
+            initWidgets();
         });
         requesterThread.start();
     }
@@ -77,13 +86,22 @@ public class WorldAndDimSelectorScreen extends Screen {
         }));
         dimslock.lock();
         if(dataReady) {
-            int linesfit = (height - 25)/10;
+            int linesfit = (height - 25)/12;
             for(int i = 0; i + displayoffset < dims.length || i == linesfit; i++) {
                 String w = dims[i+displayoffset].world;
                 String d = dims[i+displayoffset].name;
-                String t = String.format("<[%s] ==== [%s]>", w, d);
-                int l = textRenderer.getWidth(t);
-                this.addDrawableChild(new PressableTextWidget(width/2 - l/2, 2 + i*8, l, 8, new LiteralText(t), b -> {returnWith(w, d);}, this.textRenderer));
+                String t;
+                int x = width/2 - textRenderer.getWidth(w)+2;
+                if(parent.dimensionName.equalsIgnoreCase(d) && parent.worldName.equalsIgnoreCase(w)) {
+                    t = String.format(">>> %s | %s <<<", w, d);
+                    x = width/2 - textRenderer.getWidth(">>> "+w)+2;
+                } else {
+                    t = String.format("%s | %s", w, d);
+                }
+                this.addDrawableChild(new PressableTextWidget(
+                        x, 2 + i*12,
+                        textRenderer.getWidth(t), 10,
+                        new LiteralText(t), b -> {returnWith(w, d);}, this.textRenderer));
             }
         }
         dimslock.unlock();
