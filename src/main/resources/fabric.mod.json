@@ -16,11 +16,11 @@
 
   "environment": "*",
   "entrypoints": {
-    "main": [
+    "client": [
       "net.maxsupermanhd.WebChunkAssistant.ChunkAssistant"
     ],
     "modmenu": [
-      "net.maxsupermanhd.WebChunkAssistant.ModMenuIntegration"
+      "net.maxsupermanhd.WebChunkAssistant.misc.ModMenuIntegration"
     ]
   },
   "mixins": [
@@ -30,7 +30,7 @@
   "depends": {
     "fabricloader": ">=0.11.3",
     "fabric": "*",
-    "minecraft": "1.18.x",
+    "minecraft": "1.19.2",
     "java": ">=16"
   },
   "suggests": {

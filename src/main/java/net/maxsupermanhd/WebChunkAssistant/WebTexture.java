@@ -1,14 +1,12 @@
 package net.maxsupermanhd.WebChunkAssistant;
 
-import net.fabricmc.loader.api.ModContainer;
-import net.fabricmc.loader.api.metadata.ModEnvironment;
-import net.fabricmc.loader.impl.FabricLoaderImpl;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.util.Identifier;
-import org.lwjgl.system.CallbackI;
 
-import java.io.*;
-import java.net.*;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;

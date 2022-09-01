@@ -1,16 +1,15 @@
 package net.maxsupermanhd.WebChunkAssistant;
 
 import com.google.gson.Gson;
-import me.shedaniel.autoconfig.AutoConfig;
+import net.maxsupermanhd.WebChunkAssistant.config.Config;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.ScreenTexts;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.PressableTextWidget;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.LiteralText;
+import net.minecraft.screen.ScreenTexts;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.text.TextColor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -49,7 +48,7 @@ public class RendererSelectorScreen extends Screen {
         requesterThread = new Thread(() -> {
             String jsonresp = null;
             try {
-                var url = new URL(AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig().apiGetRenderers);
+                var url = new URL(Config.Server.BASE_URL.getValue() + Config.Server.ENDPOINT_RENDERERS.getValue());
                 var con = (HttpURLConnection) url.openConnection();
                 if (con == null)
                     throw new Exception("con is nul");
@@ -115,7 +114,7 @@ public class RendererSelectorScreen extends Screen {
                 if(r.IsOverlay) {
                     continue;
                 }
-                LiteralText t = new LiteralText(r.DisplayName);
+                MutableText t = Text.literal(r.DisplayName);
                 if(parent.format.equalsIgnoreCase(r.Name) || (r.IsDefault && parent.format.length() == 0)) {
                     t.fillStyle(Style.EMPTY.withColor(WHITE));
                 } else {
@@ -133,7 +132,7 @@ public class RendererSelectorScreen extends Screen {
                 if(!r.IsOverlay) {
                     continue;
                 }
-                LiteralText t = new LiteralText(r.DisplayName);
+                MutableText t = Text.literal(r.DisplayName);
                 if(enabledOverlays.contains(r.Name)) {
                     t.fillStyle(Style.EMPTY.withColor(WHITE));
                 } else {

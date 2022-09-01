@@ -2,19 +2,12 @@ package net.maxsupermanhd.WebChunkAssistant;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-import com.mojang.serialization.Dynamic;
 import net.minecraft.SharedConstants;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.client.world.ClientChunkManager;
 import net.minecraft.client.world.ClientWorld;
-import net.minecraft.fluid.Fluid;
 import net.minecraft.nbt.*;
-import net.minecraft.server.world.ServerChunkManager;
-import net.minecraft.server.world.ServerLightingProvider;
-import net.minecraft.structure.StructureContext;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -28,8 +21,6 @@ import net.minecraft.world.chunk.light.LightingProvider;
 import net.minecraft.world.gen.GenerationStep;
 import net.minecraft.world.gen.carver.CarvingMask;
 import net.minecraft.world.gen.chunk.BlendingData;
-import net.minecraft.world.tick.ChunkTickScheduler;
-import net.minecraft.world.tick.SimpleTickScheduler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -67,7 +58,7 @@ public class ClientChunkSerializer extends ChunkSerializer {
         NbtList nbtList = new NbtList();
         LightingProvider lightingProvider = world.getChunkManager().getLightingProvider();
         Registry<Biome> registry = world.getRegistryManager().get(Registry.BIOME_KEY);
-        Codec<PalettedContainer<RegistryEntry<Biome>>> codec = createCodec(registry);
+        Codec<ReadableContainer<RegistryEntry<Biome>>> codec = createCodec(registry);
         boolean bl = chunk.isLightOn();
         for (int i = lightingProvider.getBottomY(); i < lightingProvider.getTopY(); ++i) {
             int j = chunk.sectionCoordToIndex(i);
@@ -79,7 +70,8 @@ public class ClientChunkSerializer extends ChunkSerializer {
             if (bl2) {
                 ChunkSection chunkSection = chunkSections[j];
                 nbtCompound2.put("block_states", CODEC.encodeStart(NbtOps.INSTANCE, chunkSection.getBlockStateContainer()).getOrThrow(false, LOGGER::error));
-                nbtCompound2.put("biomes", codec.encodeStart(NbtOps.INSTANCE, chunkSection.getBiomeContainer()).getOrThrow(false, LOGGER::error));
+                DataResult<NbtElement> var10002 = codec.encodeStart(NbtOps.INSTANCE, chunkSection.getBiomeContainer());
+                nbtCompound2.put("biomes", var10002.getOrThrow(false, LOGGER::error));
             }
             if (chunkNibbleArray != null && !chunkNibbleArray.isUninitialized()) {
                 nbtCompound2.putByteArray("BlockLight", chunkNibbleArray.asByteArray());
@@ -128,11 +120,11 @@ public class ClientChunkSerializer extends ChunkSerializer {
         return nbtCompound;
     }
 
-    private static Codec<PalettedContainer<RegistryEntry<Biome>>> createCodec(Registry<Biome> biomeRegistry) {
-        return PalettedContainer.createCodec(biomeRegistry.getIndexedEntries(), biomeRegistry.createEntryCodec(), PalettedContainer.PaletteProvider.BIOME, biomeRegistry.entryOf(BiomeKeys.PLAINS));
+    private static Codec<ReadableContainer<RegistryEntry<Biome>>> createCodec(Registry<Biome> biomeRegistry) {
+        return PalettedContainer.createReadableContainerCodec(biomeRegistry.getIndexedEntries(), biomeRegistry.createEntryCodec(), PalettedContainer.PaletteProvider.BIOME, biomeRegistry.entryOf(BiomeKeys.PLAINS));
     }
 
     static {
-        CODEC = PalettedContainer.createCodec(Block.STATE_IDS, BlockState.CODEC, PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
+        CODEC = PalettedContainer.createPalettedContainerCodec(Block.STATE_IDS, BlockState.CODEC, PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
     }
 }

@@ -1,17 +1,17 @@
 package net.maxsupermanhd.WebChunkAssistant;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import me.shedaniel.autoconfig.AutoConfig;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.impl.FabricLoaderImpl;
+import net.maxsupermanhd.WebChunkAssistant.config.Config;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.PressableTextWidget;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
@@ -21,12 +21,8 @@ import org.lwjgl.glfw.GLFW;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class WebMapScreen extends Screen {
     public static final Logger LOGGER = LogManager.getLogger("WebMapScreen");
@@ -37,7 +33,13 @@ public class WebMapScreen extends Screen {
     private final Identifier TEX_LOADING2 = new Identifier("webchunkassistant", "textures/gui/logo-2.png");
     private final Identifier TEX_LOADING3 = new Identifier("webchunkassistant", "textures/gui/logo-3.png");
     private final Identifier TEX_LOADING4 = new Identifier("webchunkassistant", "textures/gui/logo-4.png");
-    private final HashMap<MapTilePos, WebTexture> loadedTextures = new HashMap<>(16);
+    private final Text TrNoCache = Text.translatable("WebChunkAssistant.gui.NoCache");
+    private final Text TrCache = Text.translatable("WebChunkAssistant.gui.Cache");
+    private final Text TrSelectMap = Text.translatable("WebChunkAssistant.gui.SelectMap");
+    private final Text TrSelectMapScreen = Text.translatable("WebChunkAssistant.gui.SelectMapScreen");
+    private final Text TrSelectLayer = Text.translatable("WebChunkAssistant.gui.SelectLayer");
+    private final Text TrSelectLayerScreen = Text.translatable("WebChunkAssistant.gui.SelectLayerScreen");
+    private final ConcurrentHashMap<MapTilePos, WebTexture> loadedTextures = new ConcurrentHashMap<>(16);
     public long mapx, mapz;
     public int mapzoom = 4;
     public double mapoffsetx = 0.5, mapoffsety = 0.5;
@@ -45,14 +47,18 @@ public class WebMapScreen extends Screen {
     public int zoombreaklow = 192;
     public int zoombreakhigh = 320;
     public int zoomsensitivity = 32;
+    public int propagateChangesTo = 8;
+    public int allowedTileUpdatesPerTick = 16;
     public String worldName = "";
     public String dimensionName = "";
     public String format = "terrain";
     public String[] overlays = {};
     public boolean disableCache = false;
-    public String cachedUserAgent = "WebChunk Assistant";
+    public static String cachedUserAgent = "WebChunk Assistant";
     public boolean reinitWidgets = false;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(12);
+//    private final ExecutorService executorService = Executors.newFixedThreadPool(12);
+    private final ThreadPoolExecutor executorService = new ThreadPoolExecutor(0, 4, Long.MAX_VALUE, TimeUnit.NANOSECONDS, new LinkedBlockingQueue<>());
+    private final ConcurrentLinkedQueue updateTilesQueue = new ConcurrentLinkedQueue<>(); // to ensure thread safety of incoming tiles
     protected WebMapScreen(Text title) {
         super(title);
         for (ModContainer m : FabricLoaderImpl.INSTANCE.getAllMods()) {
@@ -69,41 +75,82 @@ public class WebMapScreen extends Screen {
             initWidgets();
             reinitWidgets = false;
         }
+        processTileUpdates();
     }
     @Override
     public void init() {
+        zoombreaklow = Config.Map.ZOOM_BREAK_LOW.getIntegerValue();
+        zoombreakhigh = Config.Map.ZOOM_BREAK_HIGH.getIntegerValue();
+        executorService.setMaximumPoolSize(Config.Map.REQUEST_POOL_SIZE.getIntegerValue());
         initWidgets();
     }
 
     public void initWidgets() {
         this.clearChildren();
+        int selmapw = textRenderer.getWidth(TrSelectMap.asOrderedText());
         this.addDrawableChild(new ButtonWidget(
-                this.width - (textRenderer.getWidth("Select map") + 4), 2,
-                textRenderer.getWidth("Select map") + 4, 10,
-                new LiteralText("Select map"), (button) -> {
-            assert this.client != null;
-            this.client.setScreen(new WorldAndDimSelectorScreen(this, new LiteralText("World and dimension select")));
-        }
-        ));
-        this.addDrawableChild(new ButtonWidget(
-                this.width - (textRenderer.getWidth("Select renderer") + 4), 14,
-                textRenderer.getWidth("Select renderer") + 4, 10,
-                new LiteralText("Select renderer"), (button) -> {
+                this.width - (selmapw + 4), 2,
+                selmapw + 4, 10,
+                TrSelectMap, (button) -> {
                     assert this.client != null;
-                    this.client.setScreen(new RendererSelectorScreen(this, new LiteralText("Renderer select")));
+                    this.client.setScreen(new WorldAndDimSelectorScreen(this, TrSelectMapScreen));
                 }
         ));
+        int selrend = textRenderer.getWidth(TrSelectLayer.asOrderedText());
+        this.addDrawableChild(new ButtonWidget(
+                this.width - (selrend + 4), 14,
+                selrend + 4, 10,
+                TrSelectLayer, (button) -> {
+                    assert this.client != null;
+                    this.client.setScreen(new RendererSelectorScreen(this, TrSelectLayerScreen));
+                }
+        ));
+        Text cl = this.getCacheLabel();
+        int clwidth = textRenderer.getWidth(cl);
         this.addDrawableChild(new PressableTextWidget(
-                this.width - textRenderer.getWidth("NOcache") - 2, this.height - textRenderer.fontHeight - 2,
-                textRenderer.getWidth("NOcache"), textRenderer.fontHeight, new LiteralText(this.getCacheLabel()),
+                this.width - clwidth - 2, this.height - textRenderer.fontHeight - 2,
+                clwidth, textRenderer.fontHeight, cl,
                 b -> {this.disableCache = !this.disableCache;this.reinitWidgets = true;}, this.textRenderer));
     }
 
-    public String getCacheLabel() {
+    public Text getCacheLabel() {
         if(this.disableCache) {
-            return "NOcache";
+            return TrNoCache;
         }
-        return "cache";
+        return TrCache;
+    }
+    private void processTileUpdates() {
+        int updated = 0;
+        while(!updateTilesQueue.isEmpty() && updated < allowedTileUpdatesPerTick) {
+            updateTilesQueue.remove();
+            updated++;
+        }
+    }
+    public void updateTile(int x, int z, NativeImage with) {
+//        ConcurrentHashMap.KeySetView<MapTilePos, Boolean> ks = ConcurrentHashMap.newKeySet();
+//        MapTilePos t = new MapTilePos();
+//        for (int s = 1; s < propagateChangesTo; s++) {
+//            t.cx = what.cx/(2<<s);
+//            t.cz = what.cz/(2<<s);
+//            t.zoom = s;
+//            WebTexture tex = loadedTextures.get(t);
+//            if(tex != nil) {
+//
+//            }
+//            tex.img
+//        }
+//        img.close();
+    }
+
+    public boolean shouldKeepTileLoaded(int x, int z, int s, String world, String dim, String type) {
+        if(Arrays.stream(overlays).noneMatch(s1 -> Objects.equals(s1, type))) {
+            return false;
+        }
+        if(!Objects.equals(world, worldName) || !Objects.equals(dim, dimensionName)) {
+            return false;
+        }
+        // TODO: check how far it is
+        return true;
     }
 
     public void drawBox(MatrixStack matrices, int x0, int y0, int x1, int y1) {
@@ -165,8 +212,7 @@ public class WebMapScreen extends Screen {
     }
 
     public URL getURIfromPos(MapTilePos pos) throws MalformedURLException {
-        ChunkAssistantConfig config = AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig();
-        return new URL(String.format("%sworlds/%s/%s/tiles/%s/%d/%d/%d/png", config.baseurl, pos.world, pos.dimension, pos.format, pos.zoom, pos.cx, pos.cz));
+        return new URL(String.format(Config.Server.BASE_URL.getValue() + Config.Server.ENDPOINT_MAP_DATA.getValue(), pos.world, pos.dimension, pos.format, pos.zoom, pos.cx, pos.cz));
     }
 
     public void setWorldName(String w) {
@@ -286,6 +332,9 @@ public class WebMapScreen extends Screen {
             maptilesize += zoombreakhigh - zoombreaklow;
             mapzoom += 1;
         } else if (maptilesize+1 > zoombreakhigh) {
+            if(mapzoom == 0) {
+                return false;
+            }
             maptilesize -= zoombreakhigh - zoombreaklow;
 //            mapx = (long) ((mapx * zoomchunks) / Math.pow(2, mapzoom-1))+1;
 //            mapz = (long) ((mapz * zoomchunks) / Math.pow(2, mapzoom-1))+1;
@@ -358,5 +407,11 @@ public class WebMapScreen extends Screen {
         public int hashCode() {
             return Objects.hash(world, dimension, cx, cz, zoom, format);
         }
+    }
+
+    public static class TileUpdate {
+        public MapTilePos pos;
+        public NativeImage img;
+
     }
 }

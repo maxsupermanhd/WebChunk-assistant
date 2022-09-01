@@ -1,13 +1,12 @@
 package net.maxsupermanhd.WebChunkAssistant;
 
 import com.google.gson.Gson;
-import me.shedaniel.autoconfig.AutoConfig;
+import net.maxsupermanhd.WebChunkAssistant.config.Config;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.ScreenTexts;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.PressableTextWidget;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.LiteralText;
+import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -35,7 +34,7 @@ public class WorldAndDimSelectorScreen extends Screen {
         requesterThread = new Thread(() -> {
             String rsp = null;
             try {
-                var url = new URL(AutoConfig.getConfigHolder(ChunkAssistantConfig.class).getConfig().apiGetDimensions);
+                var url = new URL(Config.Server.BASE_URL.getValue() + Config.Server.ENDPOINT_DIMS.getValue());
                 var con = (HttpURLConnection)url.openConnection();
                 if(con == null)
                     throw new Exception("con is nul");
@@ -101,7 +100,7 @@ public class WorldAndDimSelectorScreen extends Screen {
                 this.addDrawableChild(new PressableTextWidget(
                         x, 2 + i*12,
                         textRenderer.getWidth(t), 10,
-                        new LiteralText(t), b -> {returnWith(w, d);}, this.textRenderer));
+                        Text.of(t), b -> {returnWith(w, d);}, this.textRenderer));
             }
         }
         dimslock.unlock();
