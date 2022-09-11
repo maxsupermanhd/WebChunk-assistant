@@ -33,7 +33,7 @@ dependencies {
 //		exclude(group: "net.fabricmc.fabric-api")
 //	}
 	modImplementation "com.terraformersmc:modmenu:${project.modmenu_version}"
-	modImplementation "fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:0.54.0.2"
+	modImplementation "fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}"
 }
 
 processResources {
